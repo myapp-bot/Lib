@@ -27,24 +27,43 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Vérifier les fichiers du projet
+        run: |
+          test -f package.json || (echo "ERREUR : package.json introuvable" && exit 1)
+          test -f capacitor.config.ts -o -f capacitor.config.json -o -f capacitor.config.js || (echo "ERREUR : configuration Capacitor introuvable" && exit 1)
+
       - name: Installer les dépendances
         run: npm install
 
-       - name: Ajouter Android si nécessaire
+      - name: Vérifier Capacitor Android
+        run: |
+          npm ls @capacitor/core @capacitor/cli @capacitor/android
+          npx cap --version
+
+      - name: Ajouter Android si nécessaire
         run: |
           if [ ! -d android ]; then
-          npx cap add android
+            npx cap add android
           fi
+
       - name: Synchroniser Capacitor
         run: npx cap sync android
+
+      - name: Vérifier le projet Android
+        run: |
+          test -f android/gradlew || (echo "ERREUR : gradlew introuvable" && exit 1)
+          test -f android/app/build.gradle -o -f android/app/build.gradle.kts || (echo "ERREUR : configuration Gradle Android introuvable" && exit 1)
+
       - name: Compiler APK
         run: |
-            cd android
-            chmod +x gradlew
-            ./gradlew assembleDebug
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Publier l'APK
         uses: actions/upload-artifact@v4
         with:
           name: liberte-apk-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
