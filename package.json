@@ -1,0 +1,19 @@
+{
+  "name": "liberte-android",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Wrapper Android Capacitor pour Liberté",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android",
+    "build:debug": "cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@aparajita/capacitor-biometric-auth": "^9.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}
