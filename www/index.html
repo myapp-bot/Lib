@@ -188,7 +188,29 @@ function render(){
  const homeAvg=document.getElementById('homeSmokeAvg'),journeyAvg=document.getElementById('tabacJourneyAvg');if(homeAvg)homeAvg.textContent=document.getElementById('avgSmoke').textContent;if(journeyAvg)journeyAvg.textContent=document.getElementById('avgSmoke').textContent;const homeAvoided=document.getElementById('homeSmokeAvoided'),journeyAvoided=document.getElementById('tabacJourneyAvoided');if(homeAvoided)homeAvoided.textContent=document.getElementById('avoided').textContent;if(journeyAvoided)journeyAvoided.textContent=document.getElementById('avoided').textContent;
  ensureLibrary();renderTriggers();renderLibrary();renderCycle();renderAlcohol();syncHomeAlcohol();renderAlcoholCycle();renderAlcoholStats();const hDays=document.getElementById('homeAlcoholDays');if(hDays)hDays.textContent=document.getElementById('alcoholStatDays').textContent;const ah=Object.values(state.alcoholDays||{}).filter(x=>x.savedAt||x.status==='used'||x.status==='urge'||(x.status==='none'&&x.note));const an=ah.filter(x=>x.status==='none').length;['homeAlcoholNoUse','alcoholJourneyNoUse'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=an});['alcoholJourneyTracked'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=ah.length});renderSmokeEvents();renderAffirmationsToday();applyPreferences();renderVoiceChoices();
 }
-function download(name,content,type='application/json'){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href)}
+let exportInProgress=false;
+async function download(name,content,type='application/json'){
+ if(exportInProgress)return;
+ exportInProgress=true;
+ const buttons=['exportData','backupBtn','exportCsv'].map(id=>document.getElementById(id)).filter(Boolean);
+ buttons.forEach(b=>b.disabled=true);
+ try{
+  const cap=window.Capacitor;
+  if(cap && cap.getPlatform && cap.getPlatform()==='android'){
+   const result=await cap.nativePromise('DataExport','save',{name,content,mimeType:type.split(';')[0]});
+   toast(result.cancelled?'Export annulé.':'Fichier enregistré.');
+  }else{
+   const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);
+   const a=document.createElement('a');a.href=url;a.download=name;
+   document.body.appendChild(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),60000);
+   toast('Téléchargement demandé. Vérifie tes téléchargements.');
+  }
+ }catch(error){
+  console.error('Export impossible',error);
+  alert('Impossible d’enregistrer le fichier. '+(error.message||'Réessaie avec une autre destination.'));
+ }finally{exportInProgress=false;buttons.forEach(b=>b.disabled=false);}
+}
 function exportJSON(){download('liberte90-sauvegarde-'+today+'.json',JSON.stringify(state,null,2))}
 function renderQuote(){const dayIndex=Math.floor((parseDate(today)-parseDate('2026-01-01'))/86400000);const q=quotes[(((dayIndex+quoteIndex)%quotes.length)+quotes.length)%quotes.length];const quote=document.getElementById('dailyQuote'),ref=document.getElementById('quoteRef');if(quote)quote.textContent=q[0];if(ref)ref.textContent=q[1];const m=document.getElementById('dailyMarquee');if(m){const text=q[0]+' — '+q[1];m.replaceChildren();const first=document.createElement('span');first.textContent=text;const second=document.createElement('span');second.textContent=text;second.setAttribute('aria-hidden','true');m.append(first,second);m.style.animation='none';void m.offsetWidth;m.style.animation='';}}
 document.addEventListener('click',e=>{const tab=e.target.closest('[data-tab]');if(tab)setTab(tab.dataset.tab);const go=e.target.closest('[data-goto]');if(go)setTab(go.dataset.goto)});
@@ -263,7 +285,7 @@ document.getElementById('unlockBtn').onclick=unlockPin;document.getElementById('
 
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;document.getElementById('installBtn').style.display='inline-block'});
 document.getElementById('installBtn').onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null}else toast('Dans Chrome : menu ⋮ → Installer l’application.')};
-if('serviceWorker'in navigator && location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+if(!(window.Capacitor?.isNativePlatform?.()) && 'serviceWorker'in navigator && location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 ensureLibrary();render();renderQuote();initCollapsibleBlocks();updateBottomNav();showPinLock();
 </script>
 </body></html>

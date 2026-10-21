@@ -17,7 +17,7 @@ Prérequis : installer Node.js LTS, Android Studio et le SDK Android.
 3. Exécute, une commande à la fois :
    npm install
    npx cap add android
-   npx cap sync android
+   npm run sync
    npx cap open android
 4. Android Studio s’ouvre. Attends la fin de la synchronisation Gradle et accepte l’installation des composants SDK demandés.
 5. Pour créer l’APK : Build > Build Bundle(s) / APK(s) > Build APK(s).
@@ -25,7 +25,7 @@ Prérequis : installer Node.js LTS, Android Studio et le SDK Android.
 
 POUR METTRE À JOUR LE CONTENU WEB PLUS TARD
 - Remplace les fichiers concernés dans www/.
-- Puis exécute npx cap sync android avant de recompiler.
+- Puis exécute npm run sync avant de recompiler.
 
 NOTES
 - JavaScript/PWA : les fichiers sont dans www/.
@@ -33,3 +33,26 @@ NOTES
 - La compilation n’a pas été exécutée dans l’environnement qui a créé cette archive ; le résultat final doit être confirmé par GitHub Actions ou Android Studio.
 - Le workflow installe les dépendances depuis package.json ; aucun package-lock.json n’est fourni.
 - Les données locales du navigateur et celles de l’APK peuvent être stockées séparément. Exporte une sauvegarde avant tout changement de version.
+
+CORRECTIF 2.0.1 — EXPORTS ET ICÔNE
+- JSON et CSV : dans l’APK, le bouton ouvre le sélecteur Android « Enregistrer sous ».
+  Choisir Téléchargements (ou un autre dossier), puis Enregistrer.
+- Annuler ferme le sélecteur sans afficher un faux succès.
+- Le navigateur conserve le téléchargement classique.
+- L’icône Liberté existante est intégrée à Android lors de npm run sync.
+- native/ et scripts/ doivent être ajoutés au dépôt, avec les autres fichiers modifiés.
+- Aucun changement de l’identifiant application ni des clés des données locales.
+
+VALIDATION SUR TÉLÉPHONE APRÈS COMPILATION
+1. Exporter une sauvegarde JSON, choisir Téléchargements, vérifier son contenu.
+2. Exporter le CSV et vérifier les accents, les dates et les valeurs.
+3. Annuler un export, puis relancer : les boutons doivent rester utilisables.
+4. Vérifier l’icône dans la liste des applications et sur l’écran d’accueil.
+5. Restaurer la sauvegarde sur une installation de test pour vérifier les données.
+
+INSTALLATION SANS PERDRE LES DONNÉES
+Ne désinstalle pas l’ancienne application et n’efface pas ses données.
+Une mise à jour doit être signée avec la même clé que l’APK installé.
+Attention : GitHub Actions peut générer une nouvelle clé debug à chaque exécution.
+Si Android refuse la mise à jour, récupérer/réutiliser la clé de signature précédente ;
+ne pas désinstaller pour contourner ce refus sans sauvegarde récupérable.
