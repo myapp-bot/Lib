@@ -1,0 +1,24 @@
+const {JSDOM,VirtualConsole}=require('jsdom');
+const fs=require('fs'),assert=require('assert');
+const errors=[];const vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+const dom=new JSDOM(fs.readFileSync(require('path').join(__dirname,'../www/index.html'),'utf8'),{url:'https://liberte.test/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:vc,beforeParse(w){w.scrollTo=()=>{};w.matchMedia=()=>({matches:false,addEventListener(){}});w.HTMLElement.prototype.scrollIntoView=function(){};w.confirm=()=>true;w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;Object.defineProperty(w.crypto,'subtle',{value:require('crypto').webcrypto.subtle});}});
+const w=dom.window,d=w.document;const click=id=>d.getElementById(id).click();const change=(id,value)=>{d.getElementById(id).value=value;d.getElementById(id).dispatchEvent(new w.Event('change',{bubbles:true}))};
+(async()=>{
+assert.deepEqual(errors,[]);assert.equal(d.querySelectorAll('#meditationVerses details').length,6);assert.equal(d.querySelectorAll('#alcoholResources details').length,3);
+assert.equal(d.querySelectorAll('#chartBars .barcol').length,14);change('smokePeriod','30');assert.equal(d.querySelectorAll('#chartBars .barcol').length,30);
+change('smokePeriod','custom');change('smokeFrom','2026-02-01');change('smokeTo','2026-02-28');assert.equal(d.querySelectorAll('#chartBars .barcol').length,28);
+change('smokeFrom','2026-03-01');assert.equal(d.querySelectorAll('#chartBars .barcol').length,0);
+d.querySelector('[data-add-kind="verset"]').click();d.getElementById('contentTitle').value='Test <titre>';d.getElementById('contentText').value='<img src=x onerror=alert(1)> Texte';click('saveContent');assert.equal(d.querySelectorAll('#meditationVerses details').length,7);assert.equal(d.querySelectorAll('#meditationVerses img').length,0);
+const id=JSON.parse(w.localStorage.getItem('liberte90_v2')).library.find(x=>x.title==='Test <titre>').id;d.querySelector('#meditationVerses [data-edit-content="'+id+'"]').click();d.getElementById('contentText').value='Texte modifié';click('saveContent');assert(d.getElementById('meditationVerses').textContent.includes('Texte modifié'));
+d.querySelector('#meditationVerses [data-delete-content="'+id+'"]').click();assert.equal(d.querySelectorAll('#meditationVerses details').length,6);
+d.querySelector('#alcoholResources [data-delete-content]').click();assert.equal(d.querySelectorAll('#alcoholResources details').length,2);w.eval('render()');assert.equal(d.querySelectorAll('#alcoholResources details').length,2);
+change('libraryFilter','all');d.querySelector('[data-delete-content="a-1"]').click();w.eval('render()');assert(!JSON.parse(w.localStorage.getItem('liberte90_v2')).library.some(x=>x.id==='a-1'));
+d.getElementById('pinNew').value='1234';d.getElementById('pinConfirm').value='1234';await d.getElementById('setPin').onclick();click('lockNow');assert.equal(d.getElementById('pinOverlay').style.display,'grid');d.getElementById('pinUnlock').value='9999';await d.getElementById('unlockBtn').onclick();assert.equal(d.getElementById('pinOverlay').style.display,'grid');d.getElementById('pinUnlock').value='1234';await d.getElementById('unlockBtn').onclick();assert.equal(d.getElementById('pinOverlay').style.display,'none');
+const calls=[];w.Capacitor={getPlatform:()=> 'android',nativePromise:async(plugin,method,args)=>{calls.push({plugin,method,args})}};
+await w.speakText('Lecture de test.');assert.equal(calls.at(-1).method,'speak');assert.equal(calls.at(-1).args.text,'Lecture de test.');
+await d.getElementById('pauseVisual').onclick();assert.equal(calls.at(-1).method,'pause');
+await d.getElementById('biometricInfo').onclick();assert.equal(JSON.parse(w.localStorage.getItem('liberte90_v2')).security.biometricEnabled,true);
+click('lockNow');w.Capacitor.nativePromise=async()=>{throw Error('Annulation')};await d.getElementById('biometricUnlock').onclick();assert.equal(d.getElementById('pinOverlay').style.display,'grid');
+w.Capacitor.nativePromise=async()=>({});await d.getElementById('biometricUnlock').onclick();assert.equal(d.getElementById('pinOverlay').style.display,'none');
+assert.deepEqual(errors,[]);console.log('PASS: DOM startup, periods, date validation, CRUD, escaping, deletion persistence, PIN lock/unlock.');dom.window.close();
+})().catch(e=>{console.error(e);dom.window.close();process.exit(1)});

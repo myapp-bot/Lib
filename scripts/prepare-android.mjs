@@ -38,3 +38,24 @@ mkdirSync(resolve(res,'mipmap-anydpi-v26'),{recursive:true});
 for (const name of ['ic_launcher','ic_launcher_round']) writeFileSync(resolve(res,'mipmap-anydpi-v26',name+'.xml'), `<?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/liberte_icon_background"/><foreground android:drawable="@drawable/liberte_foreground"/></adaptive-icon>`);
 console.log('Export Android et icônes Liberté intégrés.');
+
+// Native speech engine and Android system authentication.
+copyFileSync(resolve(root,'native/android/LibertyDevicePlugin.java'),resolve(java,'LibertyDevicePlugin.java'));
+source=readFileSync(activity,'utf8');
+if(!source.includes('registerPlugin(LibertyDevicePlugin.class)')){
+ source=source.replace('super.onCreate(savedInstanceState);','registerPlugin(LibertyDevicePlugin.class);\n        super.onCreate(savedInstanceState);');
+ writeFileSync(activity,source);
+}
+const gradle=resolve(root,'android/app/build.gradle');
+let build=readFileSync(gradle,'utf8');
+if(!build.includes('androidx.biometric:biometric:'))build+='\ndependencies { implementation "androidx.biometric:biometric:1.1.0" }\n';
+build=build.replace(/versionCode\s+\d+/, 'versionCode 20261023').replace(/versionName\s+"[^"]+"/, 'versionName "2.2.0"');
+writeFileSync(gradle,build);
+const manifest=resolve(root,'android/app/src/main/AndroidManifest.xml');
+let xml=readFileSync(manifest,'utf8');
+if(!xml.includes('android.permission.USE_BIOMETRIC'))xml=xml.replace('</manifest>','<uses-permission android:name="android.permission.USE_BIOMETRIC"/>\n</manifest>');
+if(!xml.includes('android.intent.action.TTS_SERVICE')){
+ const query='<intent><action android:name="android.intent.action.TTS_SERVICE"/></intent>';
+ xml=xml.includes('</queries>')?xml.replace('</queries>',query+'</queries>'):xml.replace('</manifest>','<queries>'+query+'</queries>\n</manifest>');
+}
+writeFileSync(manifest,xml);
